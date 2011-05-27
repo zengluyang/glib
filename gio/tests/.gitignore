@@ -110,8 +110,8 @@ task
 test.mo
 test.gresource
 test_resources.c
-test_resources2.c
-test_resources2.h
+test2_resources.c
+test2_resources.h
 tls-certificate
 tls-interaction
 unix-fd
