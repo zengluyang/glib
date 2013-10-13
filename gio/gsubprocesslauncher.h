@@ -100,6 +100,11 @@ GLIB_AVAILABLE_IN_2_40
 void                    g_subprocess_launcher_take_stderr_fd            (GSubprocessLauncher   *self,
                                                                          gint                   fd);
 
+GLIB_AVAILABLE_IN_2_40
+void                    g_subprocess_launcher_pass_fd                   (GSubprocessLauncher   *self,
+                                                                         gint                   source_fd,
+                                                                         gint                   target_fd);
+
 /* Child setup, only available on UNIX */
 GLIB_AVAILABLE_IN_2_40
 void                    g_subprocess_launcher_set_child_setup           (GSubprocessLauncher   *self,

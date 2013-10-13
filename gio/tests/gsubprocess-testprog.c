@@ -1,6 +1,7 @@
 #include <gio/gio.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #ifdef G_OS_UNIX
 #include <gio/gunixinputstream.h>
@@ -121,6 +122,30 @@ sleep_forever_mode (int argc,
   return 0;
 }
 
+static int
+write_to_fds (int argc, char **argv)
+{
+  int i;
+
+  for (i = 2; i < argc; i++)
+    {
+      int fd = atoi (argv[i]);
+      FILE *f = fdopen (fd, "w");
+      const char buf[] = "hello world\n";
+      size_t bytes_written;
+      
+      g_assert (f != NULL);
+      
+      bytes_written = fwrite (buf, 1, sizeof (buf), f);
+      g_assert (bytes_written == sizeof (buf));
+      
+      if (fclose (f) == -1)
+        g_assert_not_reached ();
+    }
+
+  return 0;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -162,6 +187,8 @@ main (int argc, char **argv)
     return cat_mode (argc, argv);
   else if (strcmp (mode, "sleep-forever") == 0)
     return sleep_forever_mode (argc, argv);
+  else if (strcmp (mode, "write-to-fds") == 0)
+    return write_to_fds (argc, argv);
   else
     {
       g_printerr ("Unknown MODE %s\n", argv[1]);

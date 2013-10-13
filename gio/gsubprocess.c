@@ -178,13 +178,38 @@ typedef struct
   gint                 fds[3];
   GSpawnChildSetupFunc child_setup_func;
   gpointer             child_setup_data;
+  GArray              *basic_fd_assignments;
+  GArray              *needdup_fd_assignments;
 } ChildData;
 
+static void
+unset_cloexec (int fd)
+{
+  int flags;
+  int result;
+
+  flags = fcntl (fd, F_GETFD, 0);
+
+  if (flags != -1)
+    {
+      flags &= (~FD_CLOEXEC);
+      do
+        result = fcntl (fd, F_SETFD, flags);
+      while (result == -1 && errno == EINTR);
+    }
+}
+
+/**
+ * Based on code derived from
+ * gnome-terminal:src/terminal-screen.c:terminal_screen_child_setup(),
+ * used under the LGPLv2+ with permission from author.
+ */
 static void
 child_setup (gpointer user_data)
 {
   ChildData *child_data = user_data;
   gint i;
+  gint result;
 
   /* We're on the child side now.  "Rename" the file descriptors in
    * child_data.fds[] to stdin/stdout/stderr.
@@ -196,12 +221,59 @@ child_setup (gpointer user_data)
   for (i = 0; i < 3; i++)
     if (child_data->fds[i] != -1 && child_data->fds[i] != i)
       {
-        gint result;
-
         do
           result = dup2 (child_data->fds[i], i);
         while (result == -1 && errno == EINTR);
       }
+
+  /* Basic fd assignments we can just unset FD_CLOEXEC */
+  if (child_data->basic_fd_assignments)
+    {
+      for (i = 0; i < child_data->basic_fd_assignments->len; i++)
+        {
+          gint fd = g_array_index (child_data->basic_fd_assignments, int, i);
+
+          unset_cloexec (fd);
+        }
+    }
+
+  /* If we're doing remapping fd assignments, we need to handle
+   * the case where the user has specified e.g.:
+   * 5 -> 4, 4 -> 6
+   *
+   * We do this by duping the source fds temporarily.
+   */ 
+  if (child_data->needdup_fd_assignments)
+    {
+      for (i = 0; i < child_data->needdup_fd_assignments->len; i += 2)
+        {
+          gint parent_fd = g_array_index (child_data->needdup_fd_assignments, int, i);
+          gint new_parent_fd;
+
+          do
+            new_parent_fd = fcntl (parent_fd, F_DUPFD_CLOEXEC, 3);
+          while (parent_fd == -1 && errno == EINTR);
+
+          g_array_index (child_data->needdup_fd_assignments, int, i) = new_parent_fd;
+        }
+      for (i = 0; i < child_data->needdup_fd_assignments->len; i += 2)
+        {
+          gint parent_fd = g_array_index (child_data->needdup_fd_assignments, int, i);
+          gint child_fd = g_array_index (child_data->needdup_fd_assignments, int, i+1);
+
+          if (parent_fd == child_fd)
+            {
+              unset_cloexec (parent_fd);
+            }
+          else
+            {
+              do
+                result = dup2 (parent_fd, child_fd);
+              while (result == -1 && errno == EINTR);
+              (void) close (parent_fd);
+            }
+        }
+    }
 
   if (child_data->child_setup_func)
     child_data->child_setup_func (child_data->child_setup_data);
@@ -319,7 +391,7 @@ initable_init (GInitable     *initable,
                GError       **error)
 {
   GSubprocess *self = G_SUBPROCESS (initable);
-  ChildData child_data = { { -1, -1, -1 } };
+  ChildData child_data = { { -1, -1, -1 }, 0 };
   gint *pipe_ptrs[3] = { NULL, NULL, NULL };
   gint pipe_fds[3] = { -1, -1, -1 };
   gint close_fds[3] = { -1, -1, -1 };
@@ -395,6 +467,14 @@ initable_init (GInitable     *initable,
           if (child_data.fds[2] == -1)
             goto out;
         }
+    }
+#endif
+
+#ifdef G_OS_UNIX
+  if (self->launcher)
+    {
+      child_data.basic_fd_assignments = self->launcher->basic_fd_assignments;
+      child_data.needdup_fd_assignments = self->launcher->needdup_fd_assignments;
     }
 #endif
 

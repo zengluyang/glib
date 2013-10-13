@@ -3,6 +3,8 @@
 
 #ifdef G_OS_UNIX
 #include <sys/wait.h>
+#include <glib-unix.h>
+#include <gio/gunixinputstream.h>
 #include <gio/gfiledescriptorbased.h>
 #endif
 
@@ -758,6 +760,67 @@ test_child_setup (void)
 
   (void) g_file_delete (tmpfile, NULL, NULL);
 }
+
+static void
+test_pass_fd (void)
+{
+  GError *local_error = NULL;
+  GError **error = &local_error;
+  GInputStream *child_input;
+  GDataInputStream *child_datainput;
+  GSubprocessLauncher *launcher;
+  GSubprocess *proc;
+  GPtrArray *args;
+  int basic_pipefds[2];
+  int needdup_pipefds[2];
+  char *buf;
+  gsize len;
+  char *basic_fd_str;
+  char *needdup_fd_str;
+
+  g_unix_open_pipe (basic_pipefds, FD_CLOEXEC, error);
+  g_assert_no_error (local_error);
+  g_unix_open_pipe (needdup_pipefds, FD_CLOEXEC, error);
+  g_assert_no_error (local_error);
+
+  basic_fd_str = g_strdup_printf ("%d", basic_pipefds[1]);
+  needdup_fd_str = g_strdup_printf ("%d", needdup_pipefds[1] + 1);
+
+  args = get_test_subprocess_args ("write-to-fds", basic_fd_str, needdup_fd_str, NULL);
+  launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+  g_subprocess_launcher_pass_fd (launcher, basic_pipefds[1], basic_pipefds[1]);
+  g_subprocess_launcher_pass_fd (launcher, needdup_pipefds[1], needdup_pipefds[1] + 1);
+  proc = g_subprocess_launcher_spawnv (launcher, (const gchar * const *) args->pdata, error);
+  g_ptr_array_free (args, TRUE);
+  g_assert_no_error (local_error);
+
+  (void) close (basic_pipefds[1]);
+  (void) close (needdup_pipefds[1]);
+  g_free (basic_fd_str);
+  g_free (needdup_fd_str);
+
+  child_input = g_unix_input_stream_new (basic_pipefds[0], TRUE);
+  child_datainput = g_data_input_stream_new (child_input);
+  buf = g_data_input_stream_read_line_utf8 (child_datainput, &len, NULL, error);
+  g_assert_no_error (local_error);
+  g_assert_cmpstr (buf, ==, "hello world");
+  g_object_unref (child_datainput);
+  g_object_unref (child_input);
+  g_free (buf);
+
+  child_input = g_unix_input_stream_new (needdup_pipefds[0], TRUE);
+  child_datainput = g_data_input_stream_new (child_input);
+  buf = g_data_input_stream_read_line_utf8 (child_datainput, &len, NULL, error);
+  g_assert_no_error (local_error);
+  g_assert_cmpstr (buf, ==, "hello world");
+  g_free (buf);
+  g_object_unref (child_datainput);
+  g_object_unref (child_input);
+
+  g_object_unref (launcher);
+  g_object_unref (proc);
+}
+
 #endif
 
 int
@@ -785,6 +848,7 @@ main (int argc, char **argv)
   g_test_add_func ("/gsubprocess/stdout-file", test_stdout_file);
   g_test_add_func ("/gsubprocess/stdout-fd", test_stdout_fd);
   g_test_add_func ("/gsubprocess/child-setup", test_child_setup);
+  g_test_add_func ("/gsubprocess/pass-fd", test_pass_fd);
 #endif
 
   return g_test_run ();

@@ -147,6 +147,9 @@ g_subprocess_launcher_finalize (GObject *object)
 
   if (self->stderr_fd != -1)
     close (self->stderr_fd);
+
+  g_clear_pointer (&self->basic_fd_assignments, g_array_unref);
+  g_clear_pointer (&self->needdup_fd_assignments, g_array_unref);
 #endif
 
   if (self->child_setup_destroy_notify)
@@ -163,6 +166,10 @@ g_subprocess_launcher_init (GSubprocessLauncher  *self)
   self->stdin_fd = -1;
   self->stdout_fd = -1;
   self->stderr_fd = -1;
+#ifdef G_OS_UNIX
+  self->basic_fd_assignments = g_array_new (FALSE, 0, sizeof (int));
+  self->needdup_fd_assignments = g_array_new (FALSE, 0, sizeof (int));
+#endif
 }
 
 static void
@@ -560,6 +567,38 @@ g_subprocess_launcher_take_stderr_fd (GSubprocessLauncher *self,
 {
   if (verify_disposition ("stderr", self->flags & ALL_STDERR_FLAGS, fd, self->stderr_path))
     assign_fd (&self->stderr_fd, fd);
+}
+
+/**
+ * g_subprocess_launcher_pass_fd:
+ * @self: a #GSubprocessLauncher
+ * @source_fd: File descriptor in parent process
+ * @target_fd: Target descriptor for child process
+ *
+ * Pass an arbitrary file descriptor from parent process to
+ * the child.  By default, all file descriptors from the parent
+ * will be closed.  This function allows you to create (for example)
+ * a custom pipe() or socketpair() before launching the process, and
+ * choose the target descriptor in the child.
+ *
+ * An example use case is GNUPG, which has a command line argument
+ * --passphrase-fd providing a file descriptor number where it expects
+ * the passphrase to be written.
+ */
+void
+g_subprocess_launcher_pass_fd (GSubprocessLauncher   *self,
+                               gint                   source_fd,
+                               gint                   target_fd)
+{
+  if (source_fd == target_fd)
+    {
+      g_array_append_val (self->basic_fd_assignments, source_fd);
+    }
+  else
+    {
+      g_array_append_val (self->needdup_fd_assignments, source_fd);
+      g_array_append_val (self->needdup_fd_assignments, target_fd);
+    }
 }
 
 /**

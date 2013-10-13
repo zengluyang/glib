@@ -44,6 +44,9 @@ struct _GSubprocessLauncher
   gint stderr_fd;
   gchar *stderr_path;
 
+  GArray *basic_fd_assignments;
+  GArray *needdup_fd_assignments;
+
   GSpawnChildSetupFunc child_setup_func;
   gpointer child_setup_user_data;
   GDestroyNotify child_setup_destroy_notify;
