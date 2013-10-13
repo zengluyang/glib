@@ -28,7 +28,7 @@
  * options.  It can also be used to launch multiple subprocesses with
  * a similar configuration.
  *
- * Since: 2.36
+ * Since: 2.40
  */
 
 #define ALL_STDIN_FLAGS         (G_SUBPROCESS_FLAGS_STDIN_PIPE |        \
@@ -188,7 +188,7 @@ g_subprocess_launcher_class_init (GSubprocessLauncherClass *class)
  * environment of the calling process is made at the time of this call
  * and will be used as the environment that the process is launched in.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 GSubprocessLauncher *
 g_subprocess_launcher_new (GSubprocessFlags flags)
@@ -220,7 +220,7 @@ g_subprocess_launcher_new (GSubprocessFlags flags)
  * encoding.  On UNIX, this means that they can be arbitrary byte
  * strings.  On Windows, they should be in UTF-8.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_environ (GSubprocessLauncher  *self,
@@ -245,7 +245,7 @@ g_subprocess_launcher_set_environ (GSubprocessLauncher  *self,
  * strings. On Windows, they should be in UTF-8.
  *
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_setenv (GSubprocessLauncher *self,
@@ -268,7 +268,7 @@ g_subprocess_launcher_setenv (GSubprocessLauncher *self,
  * this means that they can be arbitrary byte strings.  On Windows, they
  * should be in UTF-8.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_unsetenv (GSubprocessLauncher *self,
@@ -291,7 +291,7 @@ g_subprocess_launcher_unsetenv (GSubprocessLauncher *self,
  *
  * Returns: the value of the environment variable, %NULL if unset
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 const gchar *
 g_subprocess_launcher_getenv (GSubprocessLauncher *self,
@@ -311,7 +311,7 @@ g_subprocess_launcher_getenv (GSubprocessLauncher *self,
  * By default processes are launched with the current working directory
  * of the launching process at the time of launch.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_cwd (GSubprocessLauncher *self,
@@ -339,7 +339,7 @@ g_subprocess_launcher_set_cwd (GSubprocessLauncher *self,
  * function like g_subprocess_launcher_set_stdin_file_path() or
  * g_subprocess_launcher_take_stdout_fd().
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_flags (GSubprocessLauncher *self,
@@ -387,7 +387,7 @@ assign_fd (gint *fd_ptr, gint fd)
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_stdin_file_path (GSubprocessLauncher *self,
@@ -424,7 +424,7 @@ g_subprocess_launcher_set_stdin_file_path (GSubprocessLauncher *self,
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_take_stdin_fd (GSubprocessLauncher *self,
@@ -451,7 +451,7 @@ g_subprocess_launcher_take_stdin_fd (GSubprocessLauncher *self,
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_stdout_file_path (GSubprocessLauncher *self,
@@ -487,7 +487,7 @@ g_subprocess_launcher_set_stdout_file_path (GSubprocessLauncher *self,
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_take_stdout_fd (GSubprocessLauncher *self,
@@ -517,7 +517,7 @@ g_subprocess_launcher_take_stdout_fd (GSubprocessLauncher *self,
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_stderr_file_path (GSubprocessLauncher *self,
@@ -552,7 +552,7 @@ g_subprocess_launcher_set_stderr_file_path (GSubprocessLauncher *self,
  *
  * This feature is only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_take_stderr_fd (GSubprocessLauncher *self,
@@ -583,7 +583,7 @@ g_subprocess_launcher_take_stderr_fd (GSubprocessLauncher *self,
  *
  * Child setup functions are only available on UNIX.
  *
- * Since: 2.36
+ * Since: 2.40
  **/
 void
 g_subprocess_launcher_set_child_setup (GSubprocessLauncher  *self,
@@ -600,6 +600,19 @@ g_subprocess_launcher_set_child_setup (GSubprocessLauncher  *self,
 }
 #endif
 
+/**
+ * g_subprocess_launcher_spawn:
+ * @self: a #GSubprocessLauncher
+ * @error: Error
+ * @argv0: Command line arguments
+ * @...: Continued arguments, %NULL terminated
+ *
+ * A convenience helper for creating a #GSubprocess given a provided
+ * varargs list of arguments.
+ *
+ * Since: 2.40
+ * Returns: (transfer full): A new #GSubprocess, or %NULL on error (and @error will be set)
+ **/
 GSubprocess *
 g_subprocess_launcher_spawn (GSubprocessLauncher  *launcher,
                              GError              **error,
@@ -629,6 +642,18 @@ g_subprocess_launcher_spawn (GSubprocessLauncher  *launcher,
 
 }
 
+/**
+ * g_subprocess_launcher_spawnv:
+ * @self: a #GSubprocessLauncher
+ * @argv: Command line arguments
+ * @error: Error
+ *
+ * A convenience helper for creating a #GSubprocess given a provided
+ * array of arguments.
+ *
+ * Since: 2.40
+ * Returns: (transfer full): A new #GSubprocess, or %NULL on error (and @error will be set)
+ **/
 GSubprocess *
 g_subprocess_launcher_spawnv (GSubprocessLauncher  *launcher,
                               const gchar * const  *argv,
