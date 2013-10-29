@@ -300,10 +300,9 @@ stack_trace (char **args)
     {
       close (0); dup (in_fd[0]);   /* set the stdin to the in pipe */
       close (1); dup (out_fd[1]);  /* set the stdout to the out pipe */
-      close (2); dup (out_fd[1]);  /* set the stderr to the out pipe */
 
       execvp (args[0], args);      /* exec gdb */
-      perror ("exec failed");
+      perror ("exec gdb failed");
       _exit (0);
     }
   else if (pid == (pid_t) -1)
